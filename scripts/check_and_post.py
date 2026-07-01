@@ -73,12 +73,10 @@ def upload_to_facebook(video_path, caption):
             files={"source": f},
             timeout=600,
         )
-   if resp.status_code != 200:
+    if resp.status_code != 200:
         print("FACEBOOK ERROR DETAILS:", resp.text)
     resp.raise_for_status()
     print("Facebook response:", resp.json())
-
-
 def main():
     videos = get_video_list()
     if not videos:
