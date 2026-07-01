@@ -65,11 +65,14 @@ def download_video(video_url, out_dir):
 
 
 def upload_to_facebook(video_path, caption):
+    print(f"DEBUG: token length = {len(FB_PAGE_TOKEN)}, page id = {FB_PAGE_ID}")
     url = f"https://graph-video.facebook.com/{GRAPH_VERSION}/{FB_PAGE_ID}/videos"
+    params = {"access_token": FB_PAGE_TOKEN}
     with open(video_path, "rb") as f:
         resp = requests.post(
             url,
-            data={"access_token": FB_PAGE_TOKEN, "description": caption},
+            params=params,
+            data={"description": caption},
             files={"source": f},
             timeout=600,
         )
