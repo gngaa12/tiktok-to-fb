@@ -74,20 +74,50 @@ def download_video(video_url, out_dir):
 
 
 def upload_to_facebook(video_path, caption):
-    url = f"https://graph-video.facebook.com/{GRAPH_VERSION}/{FB_PAGE_ID}/videos"
-    params = {"access_token": FB_PAGE_TOKEN}
+    # Step 1: start the Reel upload session
+    start_url = f"https://graph.facebook.com/{GRAPH_VERSION}/{FB_PAGE_ID}/video_reels"
+    start_resp = requests.post(start_url, params={
+        "upload_phase": "start",
+        "access_token": FB_PAGE_TOKEN,
+    })
+    if start_resp.status_code != 200:
+        print("REELS START ERROR:", start_resp.text)
+    start_resp.raise_for_status()
+    start_data = start_resp.json()
+    video_id = start_data["video_id"]
+    upload_url = start_data["upload_url"]
+    print("Reel upload session started:", start_data)
+
+    # Step 2: upload the actual video file
+    file_size = os.path.getsize(video_path)
     with open(video_path, "rb") as f:
-        resp = requests.post(
-            url,
-            params=params,
-            data={"description": caption},
-            files={"source": f},
-            timeout=600,
-        )
-    if resp.status_code != 200:
-        print("FACEBOOK ERROR DETAILS:", resp.text)
-    resp.raise_for_status()
-    print("Facebook response:", resp.json())
+        video_bytes = f.read()
+
+    upload_headers = {
+        "Authorization": f"OAuth {FB_PAGE_TOKEN}",
+        "file_size": str(file_size),
+        "offset": "0",
+        "Content-Type": "application/octet-stream",
+    }
+    upload_resp = requests.post(upload_url, headers=upload_headers, data=video_bytes, timeout=600)
+    if upload_resp.status_code != 200:
+        print("REELS UPLOAD ERROR:", upload_resp.text)
+    upload_resp.raise_for_status()
+    print("Upload response:", upload_resp.json())
+
+    # Step 3: publish the Reel
+    finish_url = f"https://graph.facebook.com/{GRAPH_VERSION}/{FB_PAGE_ID}/video_reels"
+    finish_resp = requests.post(finish_url, params={
+        "access_token": FB_PAGE_TOKEN,
+        "video_id": video_id,
+        "upload_phase": "finish",
+        "video_state": "PUBLISHED",
+        "description": caption,
+    })
+    if finish_resp.status_code != 200:
+        print("REELS PUBLISH ERROR:", finish_resp.text)
+    finish_resp.raise_for_status()
+    print("Facebook Reel publish response:", finish_resp.json())
 
 
 def process_account(username):
